@@ -10,8 +10,14 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.UUID,
       allowNull: false,
     },
-    type: DataTypes.STRING, // e.g., GST Return, TDS Filing
-    due_date: DataTypes.DATE,
+    type: {
+      type: DataTypes.STRING, // e.g., GST Return, TDS Filing
+      allowNull: false,
+    },
+    due_date: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
     is_completed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -21,9 +27,12 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   ComplianceReminder.associate = (models) => {
-    ComplianceReminder.belongsTo(models.Business, {
-      foreignKey: 'business_id',
-    });
+    if (models.Business) {
+      ComplianceReminder.belongsTo(models.Business, {
+        foreignKey: 'business_id',
+        onDelete: 'CASCADE',
+      });
+    }
   };
 
   return ComplianceReminder;

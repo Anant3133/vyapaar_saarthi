@@ -14,19 +14,31 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.UUID,
       allowNull: false,
     },
-    status: DataTypes.STRING, // applied, in_review, approved
-    application_date: DataTypes.DATE,
+    status: {
+      type: DataTypes.ENUM('applied', 'in_review', 'approved'),
+      defaultValue: 'applied',
+    },
+    application_date: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
     document_url: DataTypes.STRING,
     feedback_notes: DataTypes.TEXT,
   });
 
   SchemeApplication.associate = (models) => {
-    SchemeApplication.belongsTo(models.User, {
-      foreignKey: 'user_id',
-    });
-    SchemeApplication.belongsTo(models.GovernmentScheme, {
-      foreignKey: 'scheme_id',
-    });
+    if (models.User) {
+      SchemeApplication.belongsTo(models.User, {
+        foreignKey: 'user_id',
+        onDelete: 'CASCADE',
+      });
+    }
+    if (models.GovernmentScheme) {
+      SchemeApplication.belongsTo(models.GovernmentScheme, {
+        foreignKey: 'scheme_id',
+        onDelete: 'CASCADE',
+      });
+    }
   };
 
   return SchemeApplication;

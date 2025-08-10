@@ -10,9 +10,19 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.UUID,
       allowNull: false,
     },
-    license_type: DataTypes.STRING, // generalized license type name
-    status: DataTypes.STRING, // pending/approved/rejected
-    application_date: DataTypes.DATE,
+    license_type: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    }, // generalized license type name
+    status: {
+      type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+      defaultValue: 'pending',
+    },
+    application_date: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
     approval_date: DataTypes.DATE,
     comments: DataTypes.TEXT,
     document_url: DataTypes.STRING,
@@ -20,9 +30,12 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   LicenseApplication.associate = (models) => {
-    LicenseApplication.belongsTo(models.Business, {
-      foreignKey: 'business_id',
-    });
+    if (models.Business) {
+      LicenseApplication.belongsTo(models.Business, {
+        foreignKey: 'business_id',
+        onDelete: 'CASCADE',
+      });
+    }
   };
 
   return LicenseApplication;

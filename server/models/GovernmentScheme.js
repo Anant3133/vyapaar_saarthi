@@ -6,12 +6,33 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    name: DataTypes.STRING,
-    description: DataTypes.TEXT,
-    eligibility_criteria: DataTypes.TEXT,
-    benefits: DataTypes.TEXT,
-    department: DataTypes.STRING,
-    application_link: DataTypes.STRING,
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    eligibility_criteria: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    benefits: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    department: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    application_link: {
+      type: DataTypes.STRING,
+      validate: {
+        isUrl: true,
+      },
+      allowNull: true,
+    },
   });
 
   GovernmentScheme.associate = (models) => {
