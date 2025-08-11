@@ -1,9 +1,26 @@
 🇮🇳 Vyapar Saarthi - A Unified Business Portal
 Your Compass for Effortless Business Navigation in India.
 
-<div align="center">
-
-</div>
+<p align="center">
+<a href="https://opensource.org/licenses/ISC">
+<img src="https://img.shields.io/badge/License-ISC-blue.svg?style=for-the-badge" alt="License: ISC">
+</a>
+<a href="https://reactjs.org/">
+<img src="https://img.shields.io/badge/react-%2320232A.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB" alt="React">
+</a>
+<a href="https://nodejs.org/">
+<img src="https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js">
+</a>
+<a href="https://expressjs.com/">
+<img src="https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=%2361DAFB" alt="Express.js">
+</a>
+<a href="https://www.postgresql.org/">
+<img src="https://img.shields.io/badge/postgresql-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+</a>
+<a href="https://tailwindcss.com/">
+<img src="https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="TailwindCSS">
+</a>
+</p>
 
 📖 About The Project
 Vyapar Saarthi (व्यापार सारथी) is a transformative full-stack web application designed to solve a major challenge for Indian entrepreneurs: the fragmented, slow, and often frustrating process of interacting with various government portals. Our mission is to provide a single, streamlined, and user-friendly platform for business registrations, license applications, and compliance management.
