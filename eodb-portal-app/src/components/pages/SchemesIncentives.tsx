@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   Search,
@@ -27,6 +27,7 @@ import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Progress } from '../ui/progress';
+import { GovSchemesAPI } from '@/api';
 
 interface Scheme {
   id: string;
@@ -250,79 +251,47 @@ export function SchemesIncentives({ language }: SchemesIncentivesProps) {
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [bookmarkedSchemes, setBookmarkedSchemes] = useState<Set<string>>(new Set());
 
-  const schemes: Scheme[] = [
-    {
-      id: 'startup-india',
-      title: t.schemes.startupIndia.title,
-      description: t.schemes.startupIndia.description,
-      department: t.schemes.startupIndia.department,
-      category: 'tax-benefit',
-      eligibility: t.schemes.startupIndia.eligibility,
-      benefits: t.schemes.startupIndia.benefits,
-      maxFunding: '₹50 Lakhs',
-      fundingType: 'tax-credit',
-      applicationDeadline: language === 'hi' ? 'रोलिंग आधार' : 'Rolling basis',
-      processingTime: language === 'hi' ? '30-45 दिन' : '30-45 days',
-      successRate: 78,
-      applicationsReceived: 85640,
-      targetSector: ['Technology', 'Healthcare', 'Fintech', 'E-commerce', 'CleanTech'],
-      businessSize: 'startup',
-      location: [language === 'hi' ? 'अखिल भारत' : 'All India'],
-      status: 'active',
-      featured: true,
-      documents: [
-        language === 'hi' ? 'निगमन प्रमाणपत्र' : 'Certificate of Incorporation',
-        language === 'hi' ? 'पैन कार्ड' : 'PAN Card',
-        language === 'hi' ? 'आधार कार्ड' : 'Aadhaar Card',
-        language === 'hi' ? 'बैंक खाता विवरण' : 'Bank Account Details',
-        language === 'hi' ? 'व्यावसायिक योजना' : 'Business Plan',
-        language === 'hi' ? 'नवाचार विवरण' : 'Innovation Details'
-      ],
-      contactInfo: {
-        website: 'https://www.startupindia.gov.in',
-        phone: '1800-115-565',
-        email: 'startupindia@invest.india.gov.in'
+  const [schemes, setSchemes] = useState<Scheme[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const data = await GovSchemesAPI.listSchemes();
+        if (!isMounted) return;
+        const mapped: Scheme[] = (data || []).map((s: any) => ({
+          id: s.id,
+          title: s.title || s.name,
+          description: s.description ?? '',
+          department: s.department ?? '',
+          category: 'funding',
+          eligibility: (s.eligibility_criteria ? String(s.eligibility_criteria).split('\n') : []),
+          benefits: (s.benefits ? String(s.benefits).split('\n') : []),
+          maxFunding: '—',
+          fundingType: 'grant',
+          applicationDeadline: s.end_date ? new Date(s.end_date).toDateString() : (language === 'hi' ? 'रोलिंग आधार' : 'Rolling basis'),
+          processingTime: language === 'hi' ? '30-45 दिन' : '30-45 days',
+          successRate: 0,
+          applicationsReceived: 0,
+          targetSector: [],
+          businessSize: 'all',
+          location: [language === 'hi' ? 'अखिल भारत' : 'All India'],
+          status: 'active',
+          featured: false,
+          documents: [],
+          contactInfo: {
+            website: s.application_link || '',
+            phone: '',
+            email: ''
+          }
+        }));
+        setSchemes(mapped);
+      } catch (err) {
+        console.error(err);
       }
-    },
-    {
-      id: 'pm-mudra',
-      title: t.schemes.pmMudra.title,
-      description: t.schemes.pmMudra.description,
-      department: t.schemes.pmMudra.department,
-      category: 'funding',
-      eligibility: t.schemes.pmMudra.eligibility,
-      benefits: t.schemes.pmMudra.benefits,
-      maxFunding: '₹10 Lakhs',
-      fundingType: 'loan',
-      applicationDeadline: language === 'hi' ? 'रोलिंग आधार' : 'Rolling basis',
-      processingTime: language === 'hi' ? '15-30 दिन' : '15-30 days',
-      successRate: 92,
-      applicationsReceived: 2850000,
-      targetSector: [
-        language === 'hi' ? 'विनिर्माण' : 'Manufacturing',
-        language === 'hi' ? 'व्यापार' : 'Trading',
-        language === 'hi' ? 'सेवाएं' : 'Services',
-        language === 'hi' ? 'कृषि' : 'Agriculture'
-      ],
-      businessSize: 'msme',
-      location: [language === 'hi' ? 'अखिल भारत' : 'All India'],
-      status: 'active',
-      featured: true,
-      documents: [
-        language === 'hi' ? 'व्यावसायिक योजना' : 'Business Plan',
-        language === 'hi' ? 'पहचान प्रमाण' : 'Identity Proof',
-        language === 'hi' ? 'पता प्रमाण' : 'Address Proof',
-        language === 'hi' ? 'आय प्रमाण' : 'Income Proof',
-        language === 'hi' ? 'बैंक विवरण' : 'Bank Statements',
-        language === 'hi' ? 'व्यवसाय पंजीकरण' : 'Business Registration'
-      ],
-      contactInfo: {
-        website: 'https://www.mudra.org.in',
-        phone: '1800-180-1111',
-        email: 'info@mudra.org.in'
-      }
-    }
-  ];
+    })();
+    return () => { isMounted = false; };
+  }, [language]);
 
   const filteredSchemes = schemes.filter(scheme => {
     const matchesSearch = scheme.title.toLowerCase().includes(searchTerm.toLowerCase()) ||

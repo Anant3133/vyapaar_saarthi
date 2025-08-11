@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Eye, EyeOff, Mail, Lock, User, Building, Phone, MapPin, Info, Globe, ChevronDown, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Mail, Lock, User, Building, Phone, MapPin, Sun, Moon, Globe, ChevronDown } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Alert, AlertDescription } from '../ui/alert';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { auth, demoUtils } from '../../utils/supabase/client';
+// Correctly import the default export from your auth API file
+import AuthAPI from '../../api/auth'; 
 
 interface LoginPageProps {
   onLogin: (user: any) => void;
@@ -175,89 +176,46 @@ export function LoginPage({ onLogin, onBack, language, setLanguage, darkMode, se
     { value: 'producer', label: t.businessTypes.producer }
   ];
 
-  // Demo user credentials for testing
-  const demoUsers = [
-    {
-      email: 'demo@eodb.gov.in',
-      password: 'demo123',
-      name: language === 'hi' ? 'राजेश कुमार' : 'Rajesh Kumar',
-      businessType: language === 'hi' ? 'निर्माण' : 'Manufacturing',
-      location: language === 'hi' ? 'मुंबई, महाराष्ट्र' : 'Mumbai, Maharashtra',
-      phoneNumber: '+91 9876543210'
-    },
-    {
-      email: 'startup@example.com',
-      password: 'startup123',
-      name: language === 'hi' ? 'प्रिया शर्मा' : 'Priya Sharma',
-      businessType: language === 'hi' ? 'प्रौद्योगिकी स्टार्टअप' : 'Technology Startup',
-      location: language === 'hi' ? 'बैंगलोर, कर्नाटक' : 'Bangalore, Karnataka',
-      phoneNumber: '+91 8765432109'
-    },
-    {
-      email: 'business@company.com',
-      password: 'business123',
-      name: language === 'hi' ? 'अमित सिंह' : 'Amit Singh',
-      businessType: language === 'hi' ? 'खुदरा व्यवसाय' : 'Retail Business',
-      location: language === 'hi' ? 'दिल्ली, भारत' : 'Delhi, India',
-      phoneNumber: '+91 7654321098'
-    }
-  ];
-
-  const handleDemoLogin = (demoUser: any) => {
-    setIsLoading(true);
-    setError('');
-
-    // Simulate login delay
-    setTimeout(() => {
-      const userData = {
-        id: `demo-${Date.now()}`,
-        email: demoUser.email,
-        name: demoUser.name,
-        role: userRole,
-        businessType: demoUser.businessType,
-        location: demoUser.location,
-        phoneNumber: demoUser.phoneNumber,
-        verified: true,
-        memberSince: '2024-01-01',
-        totalApplications: Math.floor(Math.random() * 10) + 1,
-        completedApplications: Math.floor(Math.random() * 5) + 1,
-        user_metadata: {
-          name: demoUser.name,
-          businessType: demoUser.businessType,
-          location: demoUser.location,
-          phoneNumber: demoUser.phoneNumber,
-          verified: true
-        }
-      };
-      
-      // Set demo user data for the data service
-      demoUtils.setDemoUser(userData);
-      
-      onLogin(userData);
-      setIsLoading(false);
-    }, 1000);
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    // Check if it's a demo user first
-    const demoUser = demoUsers.find(user => 
-      user.email === loginData.email && user.password === loginData.password
-    );
+    try {
+      // Call the login API from the imported auth module
+      const response = await AuthAPI.login({
+        email: loginData.email,
+        password: loginData.password
+      });
 
-    if (demoUser) {
-      handleDemoLogin(demoUser);
-      return;
+      // Store the token using the method from the auth module
+      AuthAPI.setAuthToken(response.token);
+
+      // Create a user object compatible with the application's expected format
+      const userData = {
+        id: response.user.id,
+        email: response.user.email,
+        name: response.user.full_name,
+        role: response.user.role === 'business_owner' ? 'business' : 'government',
+        verified: true, // Assuming login success means verified
+        memberSince: new Date().toISOString(),
+        totalApplications: 0,
+        completedApplications: 0,
+        user_metadata: {
+          name: response.user.full_name,
+          verified: true
+        }
+      };
+
+      onLogin(userData);
+    } catch (error: any) {
+      console.error('Login failed:', error);
+      const errorMessage = error.response?.data?.message || 
+        (language === 'hi' ? 'लॉगिन में त्रुटि हुई' : 'Login failed. Please check your credentials.');
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
-
-    // For non-demo users, show a helpful message instead of attempting real auth
-    setError(language === 'hi' 
-      ? 'यह एक डेमो एप्लिकेशन है। कृपया ऊपर दिए गए डेमो खातों में से किसी एक का उपयोग करें।'
-      : 'This is a demo application. Please use one of the demo accounts provided above.');
-    setIsLoading(false);
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -280,35 +238,51 @@ export function LoginPage({ onLogin, onBack, language, setLanguage, darkMode, se
       return;
     }
 
-    // For demo purposes, create a temporary user
-    setTimeout(() => {
-      const userData = {
-        id: `demo-signup-${Date.now()}`,
+    try {
+      // Call the register API from the imported auth module
+      const response = await AuthAPI.register({
+        full_name: signupData.name,
         email: signupData.email,
-        name: signupData.name,
-        role: userRole,
+        password: signupData.password,
+        phone_number: signupData.phoneNumber,
+        city: signupData.location,
+        role: userRole === 'business' ? 'business_owner' : 'gov_employee'
+      });
+
+      // Store the token
+      AuthAPI.setAuthToken(response.token);
+
+      // Create a user object compatible with the application's format
+      const userData = {
+        id: response.user.id,
+        email: response.user.email,
+        name: response.user.full_name,
+        role: response.user.role === 'business_owner' ? 'business' : 'government',
         businessType: businessTypes.find(bt => bt.value === signupData.businessType)?.label || signupData.businessType,
         location: signupData.location,
         phoneNumber: signupData.phoneNumber,
-        verified: false,
+        verified: true,
         memberSince: new Date().toISOString(),
         totalApplications: 0,
         completedApplications: 0,
         user_metadata: {
-          name: signupData.name,
+          name: response.user.full_name,
           businessType: businessTypes.find(bt => bt.value === signupData.businessType)?.label || signupData.businessType,
           location: signupData.location,
           phoneNumber: signupData.phoneNumber,
-          verified: false
+          verified: true
         }
       };
-      
-      // Set demo user data
-      demoUtils.setDemoUser(userData);
-      
+
       onLogin(userData);
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      const errorMessage = error.response?.data?.message || 
+        (language === 'hi' ? 'रजिस्ट्रेशन में त्रुटि हुई' : 'Registration failed. Please try again.');
+      setError(errorMessage);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleLoginChange = (field: string, value: string) => {
@@ -343,7 +317,6 @@ export function LoginPage({ onLogin, onBack, language, setLanguage, darkMode, se
               </Button>
               
               <div className="flex items-center gap-2">
-                {/* Dark Mode Toggle */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -358,7 +331,6 @@ export function LoginPage({ onLogin, onBack, language, setLanguage, darkMode, se
                   )}
                 </Button>
 
-                {/* Language Toggle */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="flex items-center space-x-2">
@@ -396,19 +368,6 @@ export function LoginPage({ onLogin, onBack, language, setLanguage, darkMode, se
           </CardHeader>
 
           <CardContent>
-            {/* Demo Account Info */}
-            <Alert className="mb-6 border-blue-200 bg-blue-50 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                <strong>{t.demoInfo}</strong><br />
-                <div className="mt-2 space-y-1 text-xs">
-                  <div>Email: demo@eodb.gov.in | Password: demo123</div>
-                  <div>Email: startup@example.com | Password: startup123</div>
-                  <div>Email: business@company.com | Password: business123</div>
-                </div>
-              </AlertDescription>
-            </Alert>
-
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login">{t.signin}</TabsTrigger>
@@ -472,28 +431,6 @@ export function LoginPage({ onLogin, onBack, language, setLanguage, darkMode, se
                     {isLoading ? t.signingIn : t.signin}
                   </Button>
                 </form>
-
-                {/* Quick Demo Login Buttons */}
-                <div className="space-y-2">
-                  <div className="text-center text-sm text-muted-foreground">
-                    {t.orTryDemo}
-                  </div>
-                  <div className="grid gap-2">
-                    {demoUsers.map((user, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDemoLogin(user)}
-                        disabled={isLoading}
-                        className="text-xs justify-start"
-                      >
-                        <User className="w-3 h-3 mr-2" />
-                        {user.name} - {user.businessType}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
               </TabsContent>
 
               <TabsContent value="signup" className="space-y-4 mt-6">
@@ -553,7 +490,6 @@ export function LoginPage({ onLogin, onBack, language, setLanguage, darkMode, se
                       <Select
                         value={signupData.businessType}
                         onValueChange={(value) => handleSignupChange('businessType', value)}
-                        required
                       >
                         <SelectTrigger className="pl-10">
                           <SelectValue placeholder={t.selectBusinessType} />

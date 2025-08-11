@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   FileCheck,
@@ -140,60 +140,28 @@ export function AdminLicenseIssuance({ language, user, onNavigate, onBack }: Adm
 
   const t = translations[language];
 
-  const applications = [
-    {
-      id: 'APP-2024-001',
-      applicant: 'राज एंटरप्राइजेज',
-      licenseType: 'Trade License',
-      status: 'pending',
-      submittedOn: '2024-01-15',
-      businessName: 'राज एंटरप्राइजेज',
-      email: 'raj@enterprises.com',
-      phone: '+91 9876543210',
-      address: 'नई दिल्ली, भारत',
-      documentsVerified: true,
-      priority: 'high'
-    },
-    {
-      id: 'APP-2024-002',
-      applicant: 'स्वास्थ्य केंद्र',
-      licenseType: 'Health License',
-      status: 'approved',
-      submittedOn: '2024-01-12',
-      businessName: 'स्वास्थ्य केंद्र',
-      email: 'health@center.com',
-      phone: '+91 9876543211',
-      address: 'गुड़गांव, हरियाणा',
-      documentsVerified: true,
-      priority: 'medium'
-    },
-    {
-      id: 'APP-2024-003',
-      applicant: 'फूड कॉर्नर',
-      licenseType: 'Food License',
-      status: 'pending',
-      submittedOn: '2024-01-10',
-      businessName: 'फूड कॉर्नर',
-      email: 'food@corner.com',
-      phone: '+91 9876543212',
-      address: 'नोएडा, उत्तर प्रदेश',
-      documentsVerified: false,
-      priority: 'low'
-    },
-    {
-      id: 'APP-2024-004',
-      applicant: 'मैन्युफैक्चरिंग प्लांट',
-      licenseType: 'Factory License',
-      status: 'issued',
-      submittedOn: '2024-01-08',
-      businessName: 'मैन्युफैक्चरिंग प्लांट',
-      email: 'manufacturing@plant.com',
-      phone: '+91 9876543213',
-      address: 'फरीदाबाद, हरियाणा',
-      documentsVerified: true,
-      priority: 'high'
-    }
-  ];
+  const [applications, setApplications] = useState<any[]>([]);
+  useEffect(() => {
+    // Use BusinessesAPI or AdminAPI license applications
+    import('@/api').then(({ AdminAPI }) => {
+      AdminAPI.getAllLicenseApplications().then((apps: any[]) => {
+        setApplications((apps || []).map((a: any) => ({
+          id: a.id,
+          applicant: a.applicant_name || '—',
+          licenseType: a.license_type || '—',
+          status: a.status || 'pending',
+          submittedOn: new Date(a.application_date || a.createdAt || Date.now()).toLocaleDateString(),
+          businessName: a.business_name || '—',
+          email: a.applicant_email || '—',
+          phone: a.applicant_phone || '—',
+          address: a.business_address || '—',
+          documentsVerified: true,
+          priority: a.priority || 'medium',
+        }))
+        );
+      }).catch(console.error);
+    });
+  }, []);
 
   const statuses = [
     { value: 'all', label: t.allStatuses },

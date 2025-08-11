@@ -23,6 +23,8 @@ app.use('/api/gov-schemes', require('./routes/governmentSchemeRoutes'));
 app.use('/api/compliance', require('./routes/complianceRoutes'));
 app.use('/api/activity-log', require('./routes/activityLogRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/license-types', require('./routes/licenseTypeRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 // Health check
 app.get('/', (req, res) => res.send('EODB API Running'));

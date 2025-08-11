@@ -993,7 +993,7 @@ const AdminComplaintManagementPageWrapper = () => {
       language={language}
       user={user}
       onNavigate={navigate}
-      onBack={() => navigate('/admin/dashboard')}
+      onBack={() => navigate('/dashboard')}
     />
   );
 };

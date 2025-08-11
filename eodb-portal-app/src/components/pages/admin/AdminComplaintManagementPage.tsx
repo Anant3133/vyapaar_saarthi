@@ -39,6 +39,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../../ui/avatar';
 import { Separator } from '../../ui/separator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../ui/dropdown-menu';
 import { toast } from 'sonner';
+import { AdminAPI } from '@/api';
 
 interface AdminComplaintManagementPageProps {
   language: 'en' | 'hi';
@@ -335,169 +336,37 @@ export function AdminComplaintManagementPage({ language, user, onNavigate, onBac
     ...Object.entries(t.priorityTypes).map(([key, value]) => ({ id: key, label: value }))
   ];
 
-  // Mock complaints data - relevant to the user's department
-  const sampleComplaints: Complaint[] = [
-    {
-      id: '1',
-      referenceId: 'C-2024-001',
-      type: 'license',
-      category: 'application-delay',
-      priority: 'high',
-      subject: 'Trade License Application Processing Delay',
-      description: 'My trade license application TL-2024-001 has been pending for over 45 days without any update. The estimated processing time was 15-30 days.',
-      status: 'open',
-      submittedBy: 'Rajesh Kumar',
-      businessName: 'Kumar Electronics Store',
-      contactEmail: 'rajesh.kumar@email.com',
-      contactPhone: '+91 9876543210',
-      contactPreference: 'both',
-      submittedDate: '2024-01-15',
-      updatedDate: '2024-01-15',
-      department: 'mcd',
-      responses: [],
-      licenseApplicationId: 'TL-2024-001',
-      escalationLevel: 0,
-      sla: {
-        responseTime: '24 hours',
-        resolutionTime: '7 days',
-        timeRemaining: '5 hours',
-        isOverdue: false
+  const [sampleComplaints, setSampleComplaints] = useState<Complaint[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await AdminAPI.listComplaints();
+        setSampleComplaints((data || []).map((c: any) => ({
+          id: c.id,
+          referenceId: c.id,
+          type: 'license',
+          category: 'other',
+          priority: 'medium',
+          subject: c.description?.slice(0, 64) || 'Complaint',
+          description: c.description || '',
+          status: (c.status || 'open').replace('_', '-') as any,
+          submittedBy: '—',
+          businessName: '—',
+          contactEmail: '—',
+          contactPhone: '—',
+          contactPreference: 'email',
+          submittedDate: c.created_at || new Date().toISOString(),
+          updatedDate: c.updated_at || new Date().toISOString(),
+          department: 'mcd',
+          responses: [],
+          escalationLevel: 0,
+          sla: { responseTime: '24 hours', resolutionTime: '7 days', timeRemaining: '—', isOverdue: false },
+        })) as Complaint[]);
+      } catch (e) {
+        console.error(e);
       }
-    },
-    {
-      id: '2',
-      referenceId: 'C-2024-002',
-      type: 'license',
-      category: 'payment-issue',
-      priority: 'critical',
-      subject: 'Payment Gateway Error During License Fee Payment',
-      description: 'Unable to complete payment for Health Trade License. Payment gateway shows error but amount was debited from my account.',
-      status: 'in-progress',
-      submittedBy: 'Priya Sharma',
-      businessName: 'Fresh Foods Restaurant',
-      contactEmail: 'priya.sharma@email.com',
-      contactPhone: '+91 9876543211',
-      contactPreference: 'email',
-      submittedDate: '2024-01-20',
-      updatedDate: '2024-01-21',
-      department: 'mcd',
-      assignedTo: 'Finance Officer - MCD',
-      responses: [
-        {
-          id: '1',
-          message: 'We have received your complaint and are investigating the payment issue. Our finance team will contact you within 24 hours.',
-          author: 'Finance Officer - MCD',
-          timestamp: '2024-01-21 10:30:00',
-          type: 'response'
-        }
-      ],
-      licenseApplicationId: 'HTL-2024-005',
-      escalationLevel: 1,
-      sla: {
-        responseTime: '4 hours',
-        resolutionTime: '2 days',
-        timeRemaining: '18 hours',
-        isOverdue: false
-      }
-    },
-    {
-      id: '3',
-      referenceId: 'C-2024-003',
-      type: 'general',
-      category: 'technical-issue',
-      priority: 'medium',
-      subject: 'Website Login Issues',
-      description: 'Cannot access my business dashboard. Getting "Session Expired" error even after fresh login.',
-      status: 'resolved',
-      submittedBy: 'Amit Singh',
-      businessName: 'Singh Manufacturing',
-      contactEmail: 'amit.singh@email.com',
-      contactPhone: '+91 9876543212',
-      contactPreference: 'phone',
-      submittedDate: '2024-01-18',
-      updatedDate: '2024-01-22',
-      department: 'mcd',
-      assignedTo: 'IT Support - MCD',
-      responses: [
-        {
-          id: '1',
-          message: 'The issue has been identified and resolved. You can now access your dashboard. Please clear your browser cache and try logging in again.',
-          author: 'IT Support - MCD',
-          timestamp: '2024-01-22 14:15:00',
-          type: 'response'
-        }
-      ],
-      escalationLevel: 0,
-      sla: {
-        responseTime: '8 hours',
-        resolutionTime: '3 days',
-        timeRemaining: 'Resolved',
-        isOverdue: false
-      }
-    },
-    {
-      id: '4',
-      referenceId: 'C-2024-004',
-      type: 'license',
-      category: 'document-issue',
-      priority: 'high',
-      subject: 'Document Upload Failure for Building Permit',
-      description: 'Unable to upload architectural drawings for building permit application. File size is within limits but upload keeps failing.',
-      status: 'open',
-      submittedBy: 'Meera Patel',
-      businessName: 'Patel Construction',
-      contactEmail: 'meera.patel@email.com',
-      contactPhone: '+91 9876543213',
-      contactPreference: 'email',
-      submittedDate: '2024-01-23',
-      updatedDate: '2024-01-23',
-      department: 'mcd',
-      responses: [],
-      licenseApplicationId: 'BP-2024-012',
-      escalationLevel: 0,
-      sla: {
-        responseTime: '24 hours',
-        resolutionTime: '5 days',
-        timeRemaining: '2 hours',
-        isOverdue: true
-      }
-    },
-    {
-      id: '5',
-      referenceId: 'C-2024-005',
-      type: 'general',
-      category: 'service-quality',
-      priority: 'medium',
-      subject: 'Poor Response from Licensing Officer',
-      description: 'Licensing officer Mr. XYZ was unresponsive and unprofessional during my visit to submit documents. Need better customer service.',
-      status: 'in-progress',
-      submittedBy: 'Vikram Chandra',
-      businessName: 'Chandra Enterprises',
-      contactEmail: 'vikram.chandra@email.com',
-      contactPhone: '+91 9876543214',
-      contactPreference: 'both',
-      submittedDate: '2024-01-19',
-      updatedDate: '2024-01-20',
-      department: 'mcd',
-      assignedTo: 'Supervisor - Licensing Department',
-      responses: [
-        {
-          id: '1',
-          message: 'We take such complaints seriously. We are investigating this matter and will ensure appropriate action is taken.',
-          author: 'Supervisor - Licensing Department',
-          timestamp: '2024-01-20 16:00:00',
-          type: 'response'
-        }
-      ],
-      escalationLevel: 0,
-      sla: {
-        responseTime: '24 hours',
-        resolutionTime: '7 days',
-        timeRemaining: '4 days',
-        isOverdue: false
-      }
-    }
-  ];
+    })();
+  }, []);
 
   // Filter complaints by user's department and current filters
   const filteredComplaints = sampleComplaints.filter(complaint => {
@@ -634,8 +503,8 @@ export function AdminComplaintManagementPage({ language, user, onNavigate, onBac
   const handleStatusUpdate = async (complaintId: string, newStatus: string) => {
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await AdminAPI.updateComplaintStatus(complaintId, newStatus.replace('-', '_'));
+      setSampleComplaints(prev => prev.map(c => c.id === complaintId ? { ...c, status: newStatus as any } : c));
       toast.success(t.statusUpdateSuccess);
     } catch (error) {
       toast.error(t.statusUpdateError);

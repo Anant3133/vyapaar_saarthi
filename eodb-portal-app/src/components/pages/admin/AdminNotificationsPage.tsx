@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { NotificationsAPI } from '@/api';
 import { 
   Bell, 
   Send, 
@@ -10,24 +11,19 @@ import {
   Shield,
   Clock,
   CheckCircle,
-  XCircle,
   Eye,
   Filter,
   Search,
   Calendar,
-  Mail,
   MessageSquare,
-  Settings,
   Download,
   Plus
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
+import { Card, CardContent } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
 import { Input } from '../../ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
-import { Separator } from '../../ui/separator';
-import { ScrollArea } from '../../ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -35,14 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '../../ui/dialog';
 
 interface AdminNotificationsPageProps {
   language: 'en' | 'hi';
@@ -54,6 +42,12 @@ export function AdminNotificationsPage({ language, user, onNavigate }: AdminNoti
   const [activeTab, setActiveTab] = useState('system');
   const [selectedPriority, setSelectedPriority] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Dynamic data state
+  const [systemAlerts, setSystemAlerts] = useState<any[]>([]);
+  const [userNotifications, setUserNotifications] = useState<any[]>([]);
+  const [governmentCirculars, setGovernmentCirculars] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const translations = {
     en: {
@@ -146,98 +140,45 @@ export function AdminNotificationsPage({ language, user, onNavigate }: AdminNoti
 
   const t = translations[language];
 
-  const systemAlerts = [
-    {
-      id: 1,
-      type: 'security',
-      title: language === 'hi' ? 'असामान्य लॉगिन गतिविधि पाई गई' : 'Unusual login activity detected',
-      message: language === 'hi' ? 'कई असफल लॉगिन प्रयास दर्ज किए गए' : 'Multiple failed login attempts recorded',
-      priority: 'high',
-      timestamp: '2 hours ago',
-      status: 'active',
-      department: 'Security'
-    },
-    {
-      id: 2,
-      type: 'maintenance',
-      title: language === 'hi' ? 'डेटाबेस रखरखाव निर्धारित' : 'Database maintenance scheduled',
-      message: language === 'hi' ? 'रविवार रात 2:00 AM को निर्धारित रखरखाव' : 'Scheduled maintenance on Sunday at 2:00 AM',
-      priority: 'medium',
-      timestamp: '1 day ago',
-      status: 'scheduled',
-      department: 'IT'
-    },
-    {
-      id: 3,
-      type: 'performance',
-      title: language === 'hi' ? 'सर्वर प्रतिक्रिया धीमी' : 'Server response time degraded',
-      message: language === 'hi' ? 'औसत प्रतिक्रिया समय 2 सेकंड से अधिक' : 'Average response time exceeding 2 seconds',
-      priority: 'medium',
-      timestamp: '3 hours ago',
-      status: 'investigating',
-      department: 'IT'
-    }
-  ];
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        setLoading(true);
+        // Fetch all notifications and filter by type
+        const response = await NotificationsAPI.getAllNotifications();
+        const allNotifications = response.data || [];
+        
+        // Filter system alerts (high priority, system-related)
+        const alerts = allNotifications.filter((n: any) => 
+          n.priority === 'high' || n.priority === 'critical' || 
+          n.type === 'warning' || n.type === 'error'
+        ).map(transformNotification);
+        setSystemAlerts(alerts);
+        
+        // Filter user notifications
+        const userNotifs = allNotifications.filter((n: any) => 
+          n.user_id && (n.type === 'info' || n.type === 'reminder')
+        ).map(transformNotification);
+        setUserNotifications(userNotifs);
+        
+        // Filter government circulars (broadcast notifications)
+        const circulars = allNotifications.filter((n: any) => 
+          !n.user_id && n.type === 'info' && n.department
+        ).map(transformNotification);
+        setGovernmentCirculars(circulars);
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error);
+        // Fallback to empty arrays
+        setSystemAlerts([]);
+        setUserNotifications([]);
+        setGovernmentCirculars([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const userNotifications = [
-    {
-      id: 1,
-      title: language === 'hi' ? 'नया लाइसेंस आवेदन प्राप्त' : 'New license application received',
-      message: language === 'hi' ? 'ट्रेड लाइसेंस के लिए आवेदन APP-2024-021' : 'Trade license application APP-2024-021',
-      priority: 'high',
-      timestamp: '30 minutes ago',
-      read: false,
-      department: 'MCD'
-    },
-    {
-      id: 2,
-      title: language === 'hi' ? 'अनुपालन रिपोर्ट जमा की गई' : 'Compliance report submitted',
-      message: language === 'hi' ? 'डिजिटल मार्केटिंग एजेंसी द्वारा Q4 रिपोर्ट' : 'Q4 report submitted by Digital Marketing Agency',
-      priority: 'medium',
-      timestamp: '2 hours ago',
-      read: false,
-      department: 'Labour'
-    },
-    {
-      id: 3,
-      title: language === 'hi' ? 'दस्तावेज़ सत्यापन आवश्यक' : 'Document verification required',
-      message: language === 'hi' ? 'FSSAI लाइसेंस आवेदन के लिए अतिरिक्त दस्तावेज़' : 'Additional documents needed for FSSAI license',
-      priority: 'high',
-      timestamp: '4 hours ago',
-      read: true,
-      department: 'FSSAI'
-    }
-  ];
-
-  const governmentCirculars = [
-    {
-      id: 1,
-      title: language === 'hi' ? 'नई डिजिटल पहल योजना' : 'New Digital Initiative Scheme',
-      description: language === 'hi' ? 'स्टार्टअप के लिए नई सरकारी योजना की घोषणा' : 'Announcement of new government scheme for startups',
-      issueDate: '15 Dec 2024',
-      status: 'published',
-      department: 'Ministry of MSME',
-      priority: 'high'
-    },
-    {
-      id: 2,
-      title: language === 'hi' ? 'प्रदूषण नियंत्रण दिशानिर्देश अद्यतन' : 'Pollution Control Guidelines Update',
-      description: language === 'hi' ? 'औद्योगिक इकाइयों के लिए नए पर्यावरण मानदंड' : 'New environmental standards for industrial units',
-      issueDate: '12 Dec 2024',
-      status: 'published',
-      department: 'DPCC',
-      priority: 'high'
-    },
-    {
-      id: 3,
-      title: language === 'hi' ? 'ऑनलाइन लाइसेंसिंग सुधार' : 'Online Licensing Improvements',
-      description: language === 'hi' ? 'पोर्टल में नई सुविधाओं का परिचय' : 'Introduction of new portal features',
-      issueDate: '10 Dec 2024',
-      status: 'draft',
-      department: 'General Administration',
-      priority: 'medium'
-    }
-  ];
+    fetchNotifications();
+  }, []);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -259,6 +200,31 @@ export function AdminNotificationsPage({ language, user, onNavigate }: AdminNoti
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
     }
   };
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await NotificationsAPI.markNotificationAsRead(notificationId);
+      // Update local state to mark as read
+      setUserNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      );
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  // Transform backend data to match frontend structure
+  const transformNotification = (notification: any) => ({
+    id: notification.id,
+    title: notification.title,
+    message: notification.message,
+    priority: notification.priority,
+    timestamp: notification.created_at ? new Date(notification.created_at).toLocaleString() : 'Unknown',
+    status: notification.status,
+    department: notification.department,
+    read: notification.status === 'read',
+    type: notification.type
+  });
 
   return (
     <div className="flex h-screen bg-background">
@@ -352,8 +318,20 @@ export function AdminNotificationsPage({ language, user, onNavigate }: AdminNoti
               </div>
             </div>
 
-            <div className="flex-1 overflow-hidden">
-              {/* System Alerts Tab */}
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center p-12">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading notifications...</p>
+                </div>
+              </div>
+            )}
+
+            {/* Content when not loading */}
+            {!loading && (
+              <>
+                {/* Tabs Content */}
               <TabsContent value="system" className="h-full overflow-hidden mt-0">
                 <div className="h-full flex flex-col">
                   {/* Stats Cards */}
@@ -644,11 +622,11 @@ export function AdminNotificationsPage({ language, user, onNavigate }: AdminNoti
                                 <span className="text-sm text-muted-foreground">{circular.department}</span>
                               </div>
                               <h3 className="font-medium mb-1 text-foreground">{circular.title}</h3>
-                              <p className="text-sm text-muted-foreground mb-2">{circular.description}</p>
+                                <p className="text-sm text-muted-foreground mb-2">{circular.message}</p>
                               <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                                 <span className="flex items-center">
                                   <Calendar className="w-3 h-3 mr-1" />
-                                  {circular.issueDate}
+                                    {circular.timestamp}
                                 </span>
                                 <span>{circular.department}</span>
                               </div>
@@ -674,7 +652,8 @@ export function AdminNotificationsPage({ language, user, onNavigate }: AdminNoti
                   </div>
                 </div>
               </TabsContent>
-            </div>
+              </>
+            )}
           </Tabs>
         </div>
       </div>

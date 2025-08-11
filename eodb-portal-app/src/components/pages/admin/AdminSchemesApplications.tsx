@@ -29,6 +29,7 @@ import {
   filterApplications, 
   getSchemeName 
 } from './components/AdminSchemesApplicationsHelpers';
+import { AdminAPI } from '@/api';
 
 interface AdminSchemesApplicationsProps {
   language: 'en' | 'hi';
@@ -42,10 +43,51 @@ export function AdminSchemesApplications({ language, user, onNavigate, onBack }:
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedScheme, setSelectedScheme] = useState('all');
   const [selectedTab, setSelectedTab] = useState('all');
+  const [apps, setApps] = useState<any[]>([]);
 
   const t = translations[language];
-  const quickStats = getQuickStats(language);
-  const filteredApplications = filterApplications(sampleApplications, searchTerm, selectedStatus, selectedScheme, selectedTab);
+
+  // Load scheme applications from admin endpoint
+  // Maps backend fields into UI shape consumed by helpers
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await AdminAPI.getAllApplications();
+        if (!mounted) return;
+        const mapped = (data || []).map((a: any) => ({
+          id: a.id,
+          applicantName: a.User?.full_name || '—',
+          company: a.User?.full_name || '—',
+          scheme: 'startupIndia', // placeholder key for helper; actual name below
+          schemeName: a.GovernmentScheme?.name || a.GovernmentScheme?.title || '—',
+          amount: a.requested_amount ? `₹${a.requested_amount}` : '—',
+          applicationDate: a.application_date || a.createdAt || new Date().toISOString(),
+          status: a.status === 'in_review' ? 'underReview' : a.status === 'applied' ? 'pending' : (a.status || 'pending'),
+          location: '—',
+          priority: 'medium',
+        }));
+        setApps(mapped);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [language]);
+
+  const quickStats = React.useMemo(() => {
+    const total = apps.length;
+    const pending = apps.filter(a => a.status === 'pending' || a.status === 'pendingReview').length;
+    const approvedToday = apps.filter(a => a.status === 'approved').length;
+    return [
+      { label: t.totalApplications, value: String(total), change: '+0', color: 'bg-blue-50 text-blue-600' },
+      { label: t.pendingApplications, value: String(pending), change: '+0', color: 'bg-yellow-50 text-yellow-600' },
+      { label: t.approvedToday, value: String(approvedToday), change: '+0', color: 'bg-green-50 text-green-600' },
+      { label: t.avgProcessingTime, value: '—', change: '0', color: 'bg-purple-50 text-purple-600' },
+    ];
+  }, [apps, t]);
+
+  const filteredApplications = filterApplications(apps, searchTerm, selectedStatus, selectedScheme, selectedTab);
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -218,9 +260,9 @@ export function AdminSchemesApplications({ language, user, onNavigate, onBack }:
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <span className="font-medium">{getSchemeName(application.scheme, t)}</span>
-                          </TableCell>
+                           <TableCell>
+                             <span className="font-medium">{application.schemeName || getSchemeName(application.scheme, t)}</span>
+                           </TableCell>
                           <TableCell>
                             <span className="font-medium text-green-600">{application.amount}</span>
                           </TableCell>

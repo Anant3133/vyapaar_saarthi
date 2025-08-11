@@ -10,6 +10,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    // Optional title alias used by some controllers/UI
+    title: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     description: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -24,6 +29,14 @@ module.exports = (sequelize, DataTypes) => {
     },
     department: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    start_date: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    end_date: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
     application_link: {

@@ -1,32 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { LicenseTypesAPI } from '@/api';
 import {
   FileText,
   Plus,
   Edit,
   Trash2,
   Search,
-  Filter,
   Download,
   Clock,
   Shield,
-  Building,
-  Zap,
-  Leaf,
-  Heart,
-  Car,
-  Coffee,
-  Factory,
-  Home,
-  ChevronDown
+  Building
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
 import { Input } from '../../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../ui/dialog';
+
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '../../ui/dialog';
 import { Textarea } from '../../ui/textarea';
 import { Label } from '../../ui/label';
 
@@ -41,6 +33,23 @@ export function AdminLicenseTypes({ language, user, onNavigate, onBack }: AdminL
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [licenseTypes, setLicenseTypes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Form state
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingLicenseType, setEditingLicenseType] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    category: '',
+    description: '',
+    fees: '',
+    validity_period: '',
+    processing_time: '',
+    status: 'active'
+  });
+  const [submitting, setSubmitting] = useState(false);
 
   const translations = {
     en: {
@@ -85,7 +94,9 @@ export function AdminLicenseTypes({ language, user, onNavigate, onBack }: AdminL
       maxProcessingTime: 'Maximum Processing Time',
       requiredDocuments: 'Required Documents',
       save: 'Save',
-      cancel: 'Cancel'
+      cancel: 'Cancel',
+      editLicenseTypeDesc: 'Update the license type information',
+      update: 'Update'
     },
     hi: {
       title: 'लाइसेंस प्रकार प्रबंधन',
@@ -129,98 +140,138 @@ export function AdminLicenseTypes({ language, user, onNavigate, onBack }: AdminL
       maxProcessingTime: 'अधिकतम प्रसंस्करण समय',
       requiredDocuments: 'आवश्यक दस्तावेज़',
       save: 'सहेजें',
-      cancel: 'रद्द करें'
+      cancel: 'रद्द करें',
+      editLicenseTypeDesc: 'लाइसेंस प्रकार की जानकारी अपडेट करें',
+      update: 'अपडेट करें'
     }
   };
 
   const t = translations[language];
 
-  const licenseTypes = [
-    {
-      id: 1,
-      name: language === 'hi' ? 'व्यापार लाइसेंस' : 'Trade License',
-      category: 'trade',
-      description: language === 'hi' ? 'सामान्य व्यापारिक गतिविधियों के लिए लाइसेंस' : 'License for general commercial activities',
-      fees: 5000,
-      validity: '1 year',
-      processingTime: '15 days',
-      requirements: 4,
-      status: 'active',
-      icon: Building,
+  useEffect(() => {
+    const fetchLicenseTypes = async () => {
+      try {
+        setLoading(true);
+        const response = await LicenseTypesAPI.getAllLicenseTypes();
+        setLicenseTypes(response.data || []);
+      } catch (error) {
+        console.error('Failed to fetch license types:', error);
+        // Fallback to empty array
+        setLicenseTypes([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLicenseTypes();
+  }, []);
+
+  // Form submission functions
+  const handleCreateLicenseType = async () => {
+    try {
+      setSubmitting(true);
+      await LicenseTypesAPI.createLicenseType(formData);
+      setIsCreateDialogOpen(false);
+      setFormData({
+        name: '',
+        category: '',
+        description: '',
+        fees: '',
+        validity_period: '',
+        processing_time: '',
+        status: 'active'
+      });
+      // Refresh the list
+      const response = await LicenseTypesAPI.getAllLicenseTypes();
+      setLicenseTypes(response.data || []);
+    } catch (error) {
+      console.error('Failed to create license type:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditLicenseType = async () => {
+    if (!editingLicenseType) return;
+    try {
+      setSubmitting(true);
+      await LicenseTypesAPI.updateLicenseType(editingLicenseType.id, formData);
+      setIsEditDialogOpen(false);
+      setEditingLicenseType(null);
+      setFormData({
+        name: '',
+        category: '',
+        description: '',
+        fees: '',
+        validity_period: '',
+        processing_time: '',
+        status: 'active'
+      });
+      // Refresh the list
+      const response = await LicenseTypesAPI.getAllLicenseTypes();
+      setLicenseTypes(response.data || []);
+    } catch (error) {
+      console.error('Failed to update license type:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteLicenseType = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this license type?')) {
+      try {
+        await LicenseTypesAPI.deleteLicenseType(id);
+        // Refresh the list
+        const response = await LicenseTypesAPI.getAllLicenseTypes();
+        setLicenseTypes(response.data || []);
+      } catch (error) {
+        console.error('Failed to delete license type:', error);
+      }
+    }
+  };
+
+  const openEditDialog = (licenseType: any) => {
+    setEditingLicenseType(licenseType);
+    setFormData({
+      name: licenseType.name,
+      category: licenseType.category,
+      description: licenseType.description || '',
+      fees: licenseType.fees?.toString() || '',
+      validity_period: licenseType.validity_period?.toString() || '',
+      processing_time: licenseType.processing_time?.toString() || '',
+      status: licenseType.status || 'active'
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const openCreateDialog = () => {
+    setFormData({
+      name: '',
+      category: '',
+      description: '',
+      fees: '',
+      validity_period: '',
+      processing_time: '',
+      status: 'active'
+    });
+    setIsCreateDialogOpen(true);
+  };
+
+  // Transform backend data to match frontend structure
+  const displayLicenseTypes = licenseTypes.map(lt => ({
+    id: lt.id,
+    name: lt.name,
+    category: lt.category,
+    description: lt.description || '',
+    fees: lt.fees || 0,
+    validity: `${lt.validity_period || 12} months`,
+    processingTime: `${lt.processing_time || 30} days`,
+    requirements: lt.requirements ? Object.keys(lt.requirements).length : 0,
+    status: lt.status || 'active',
+    icon: Building, // Default icon
       color: 'text-blue-600 dark:text-blue-400',
       bgColor: 'bg-blue-50 dark:bg-blue-900/20'
-    },
-    {
-      id: 2,
-      name: language === 'hi' ? 'खाद्य लाइसेंस' : 'Food License',
-      category: 'food',
-      description: language === 'hi' ? 'खाद्य व्यवसाय संचालन लाइसेंस' : 'License for food business operations',
-      fees: 3000,
-      validity: '1 year',
-      processingTime: '21 days',
-      requirements: 6,
-      status: 'active',
-      icon: Coffee,
-      color: 'text-green-600 dark:text-green-400',
-      bgColor: 'bg-green-50 dark:bg-green-900/20'
-    },
-    {
-      id: 3,
-      name: language === 'hi' ? 'फैक्टरी लाइसेंस' : 'Factory License',
-      category: 'manufacturing',
-      description: language === 'hi' ? 'औद्योगिक विनिर्माण लाइसेंस' : 'License for industrial manufacturing',
-      fees: 25000,
-      validity: '3 years',
-      processingTime: '45 days',
-      requirements: 8,
-      status: 'active',
-      icon: Factory,
-      color: 'text-orange-600 dark:text-orange-400',
-      bgColor: 'bg-orange-50 dark:bg-orange-900/20'
-    },
-    {
-      id: 4,
-      name: language === 'hi' ? 'परिवहन लाइसेंस' : 'Transport License',
-      category: 'transport',
-      description: language === 'hi' ? 'वाहन परिवहन सेवा लाइसेंस' : 'License for vehicle transport services',
-      fees: 8000,
-      validity: '2 years',
-      processingTime: '30 days',
-      requirements: 5,
-      status: 'active',
-      icon: Car,
-      color: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-purple-50 dark:bg-purple-900/20'
-    },
-    {
-      id: 5,
-      name: language === 'hi' ? 'स्वास्थ्य लाइसेंस' : 'Health License',
-      category: 'healthcare',
-      description: language === 'hi' ? 'स्वास्थ्य सेवा प्रदाता लाइसेंस' : 'License for healthcare service providers',
-      fees: 15000,
-      validity: '2 years',
-      processingTime: '60 days',
-      requirements: 10,
-      status: 'active',
-      icon: Heart,
-      color: 'text-red-600 dark:text-red-400',
-      bgColor: 'bg-red-50 dark:bg-red-900/20'
-    },
-    {
-      id: 6,
-      name: language === 'hi' ? 'पर्यावरण मंजूरी' : 'Environmental Clearance',
-      category: 'environment',
-      description: language === 'hi' ? 'पर्यावरणीय प्रभाव मूल्यांकन लाइसेंस' : 'License for environmental impact activities',
-      fees: 50000,
-      validity: '5 years',
-      processingTime: '90 days',
-      requirements: 12,
-      status: 'draft',
-      icon: Leaf,
-      color: 'text-emerald-600 dark:text-emerald-400',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-900/20'
-    }
-  ];
+  }));
 
   const categories = [
     { value: 'all', label: t.allCategories },
@@ -240,7 +291,7 @@ export function AdminLicenseTypes({ language, user, onNavigate, onBack }: AdminL
     { value: 'draft', label: t.draft }
   ];
 
-  const filteredLicenseTypes = licenseTypes.filter(license => {
+  const filteredLicenseTypes = displayLicenseTypes.filter(license => {
     const matchesSearch = license.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          license.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || license.category === selectedCategory;
@@ -260,10 +311,10 @@ export function AdminLicenseTypes({ language, user, onNavigate, onBack }: AdminL
   };
 
   const statistics = {
-    total: licenseTypes.length,
-    active: licenseTypes.filter(l => l.status === 'active').length,
-    draft: licenseTypes.filter(l => l.status === 'draft').length,
-    avgProcessingTime: Math.round(licenseTypes.reduce((acc, l) => acc + parseInt(l.processingTime), 0) / licenseTypes.length)
+    total: displayLicenseTypes.length,
+    active: displayLicenseTypes.filter(l => l.status === 'active').length,
+    draft: displayLicenseTypes.filter(l => l.status === 'draft').length,
+    avgProcessingTime: displayLicenseTypes.length > 0 ? Math.round(displayLicenseTypes.reduce((acc, l) => acc + parseInt(l.processingTime), 0) / displayLicenseTypes.length) : 0
   };
 
   return (
@@ -280,9 +331,9 @@ export function AdminLicenseTypes({ language, user, onNavigate, onBack }: AdminL
               <Download className="w-4 h-4 mr-2" />
               {t.export}
             </Button>
-            <Dialog>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button onClick={openCreateDialog}>
                   <Plus className="w-4 h-4 mr-2" />
                   {t.addNewType}
                 </Button>
@@ -295,11 +346,16 @@ export function AdminLicenseTypes({ language, user, onNavigate, onBack }: AdminL
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">{t.name}</Label>
-                      <Input id="name" placeholder="Enter license name" />
+                      <Input 
+                        id="name" 
+                        placeholder="Enter license name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="category">{t.category}</Label>
-                      <Select>
+                      <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
                         <SelectTrigger>
                           <SelectValue placeholder={t.categorySelect} />
                         </SelectTrigger>
@@ -315,35 +371,175 @@ export function AdminLicenseTypes({ language, user, onNavigate, onBack }: AdminL
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="description">{t.description}</Label>
-                    <Textarea id="description" placeholder="Enter license description" />
+                    <Textarea 
+                      id="description" 
+                      placeholder="Enter license description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    />
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="fees">{t.feeAmount}</Label>
-                      <Input id="fees" type="number" placeholder="5000" />
+                      <Input 
+                        id="fees" 
+                        type="number" 
+                        placeholder="5000"
+                        value={formData.fees}
+                        onChange={(e) => setFormData({...formData, fees: e.target.value})}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="validity">{t.validityPeriod}</Label>
-                      <Input id="validity" placeholder="1 year" />
+                      <Input 
+                        id="validity" 
+                        type="number"
+                        placeholder="12"
+                        value={formData.validity_period}
+                        onChange={(e) => setFormData({...formData, validity_period: e.target.value})}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="processing">{t.maxProcessingTime}</Label>
-                      <Input id="processing" placeholder="15 days" />
+                      <Input 
+                        id="processing" 
+                        type="number"
+                        placeholder="30"
+                        value={formData.processing_time}
+                        onChange={(e) => setFormData({...formData, processing_time: e.target.value})}
+                      />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="documents">{t.requiredDocuments}</Label>
-                    <Textarea id="documents" placeholder="List required documents..." />
+                    <Label htmlFor="status">{t.status}</Label>
+                    <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statuses.slice(1).map(status => (
+                          <SelectItem key={status.value} value={status.value}>
+                            {status.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline">{t.cancel}</Button>
-                  <Button>{t.save}</Button>
+                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                    {t.cancel}
+                  </Button>
+                  <Button onClick={handleCreateLicenseType} disabled={submitting}>
+                    {submitting ? 'Saving...' : t.save}
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
         </div>
+
+        {/* Edit License Type Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>{t.editLicenseType}</DialogTitle>
+              <DialogDescription>
+                {t.editLicenseTypeDesc}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">{t.licenseName}</Label>
+                <Input
+                  id="edit-name"
+                  placeholder="Enter license name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">{t.category}</Label>
+                <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t.categorySelect} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.slice(1).map(category => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">{t.description}</Label>
+                <Textarea
+                  id="edit-description"
+                  placeholder="Enter license description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-fees">{t.fees}</Label>
+                  <Input 
+                    id="edit-fees" 
+                    type="number" 
+                    placeholder="5000"
+                    value={formData.fees}
+                    onChange={(e) => setFormData({...formData, fees: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-validity">{t.validity}</Label>
+                  <Input 
+                    id="edit-validity" 
+                    type="number"
+                    placeholder="12"
+                        value={formData.validity_period}
+                        onChange={(e) => setFormData({...formData, validity_period: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-processing">{t.maxProcessingTime}</Label>
+                      <Input 
+                        id="edit-processing" 
+                        type="number"
+                        placeholder="30"
+                        value={formData.processing_time}
+                        onChange={(e) => setFormData({...formData, processing_time: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-status">{t.status}</Label>
+                    <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statuses.slice(1).map(status => (
+                          <SelectItem key={status.value} value={status.value}>
+                            {status.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                    {t.cancel}
+                  </Button>
+                  <Button onClick={handleEditLicenseType} disabled={submitting}>
+                    {submitting ? 'Updating...' : t.update}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -491,11 +687,11 @@ export function AdminLicenseTypes({ language, user, onNavigate, onBack }: AdminL
                             </div>
                           </div>
                           <div className="flex items-center space-x-2 ml-4">
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" onClick={() => openEditDialog(license)}>
                               <Edit className="w-4 h-4 mr-2" />
                               {t.edit}
                             </Button>
-                            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" onClick={() => handleDeleteLicenseType(license.id)}>
                               <Trash2 className="w-4 h-4 mr-2" />
                               {t.delete}
                             </Button>

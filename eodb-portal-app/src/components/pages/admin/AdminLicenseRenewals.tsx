@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   RefreshCw,
@@ -151,92 +151,36 @@ export function AdminLicenseRenewals({ language, user, onNavigate, onBack }: Adm
 
   const t = translations[language];
 
-  const renewals = [
-    {
-      id: 'LIC-2024-001',
-      licenseNumber: 'TL-2023-0045',
-      licensee: 'राज एंटरप्राइजेज',
-      licenseType: 'Trade License',
-      originalIssueDate: '2023-02-15',
-      lastRenewalDate: '2023-02-15',
-      currentExpiryDate: '2024-02-15',
-      requestedRenewalDate: '2024-01-15',
-      status: 'pending',
-      businessName: 'राज एंटरप्राइजेज',
-      email: 'raj@enterprises.com',
-      phone: '+91 9876543210',
-      address: 'नई दिल्ली, भारत',
-      renewalPeriod: '1 year',
-      renewalFee: 5000,
-      paymentStatus: 'paid',
-      documentStatus: 'verified',
-      daysToExpiry: -30,
-      priority: 'high'
-    },
-    {
-      id: 'LIC-2024-002',
-      licenseNumber: 'HL-2023-0023',
-      licensee: 'स्वास्थ्य केंद्र',
-      licenseType: 'Health License',
-      originalIssueDate: '2022-03-10',
-      lastRenewalDate: '2023-03-10',
-      currentExpiryDate: '2024-03-10',
-      requestedRenewalDate: '2024-02-10',
-      status: 'approved',
-      businessName: 'स्वास्थ्य केंद्र',
-      email: 'health@center.com',
-      phone: '+91 9876543211',
-      address: 'गुड़गांव, हरियाणा',
-      renewalPeriod: '2 years',
-      renewalFee: 15000,
-      paymentStatus: 'paid',
-      documentStatus: 'verified',
-      daysToExpiry: 15,
-      priority: 'medium'
-    },
-    {
-      id: 'LIC-2024-003',
-      licenseNumber: 'FL-2023-0067',
-      licensee: 'फूड कॉर्नर',
-      licenseType: 'Food License',
-      originalIssueDate: '2023-04-20',
-      lastRenewalDate: '2023-04-20',
-      currentExpiryDate: '2024-04-20',
-      requestedRenewalDate: '2024-03-20',
-      status: 'pending',
-      businessName: 'फूड कॉर्नर',
-      email: 'food@corner.com',
-      phone: '+91 9876543212',
-      address: 'नोएडा, उत्तर प्रदेश',
-      renewalPeriod: '1 year',
-      renewalFee: 3000,
-      paymentStatus: 'pending',
-      documentStatus: 'pending',
-      daysToExpiry: 45,
-      priority: 'low'
-    },
-    {
-      id: 'LIC-2024-004',
-      licenseNumber: 'FL-2022-0034',
-      licensee: 'मैन्युफैक्चरिंग प्लांट',
-      licenseType: 'Factory License',
-      originalIssueDate: '2021-01-15',
-      lastRenewalDate: '2023-01-15',
-      currentExpiryDate: '2024-01-15',
-      requestedRenewalDate: null,
-      status: 'expired',
-      businessName: 'मैन्युफैक्चरिंग प्लांट',
-      email: 'manufacturing@plant.com',
-      phone: '+91 9876543213',
-      address: 'फरीदाबाद, हरियाणा',
-      renewalPeriod: '3 years',
-      renewalFee: 25000,
-      paymentStatus: 'failed',
-      documentStatus: 'not_submitted',
-      daysToExpiry: -15,
-      priority: 'high'
-    }
-  ];
+  const [renewals, setRenewals] = useState<any[]>([]);
+  useEffect(() => {
+    // For now, reuse license applications and compute expiry-like info
+    import('@/api').then(({ AdminAPI }) => {
+      AdminAPI.getAllLicenseApplications().then((apps: any[]) => {
+        setRenewals((apps || []).map((a: any) => ({
+          id: a.id,
+          licenseNumber: a.tracking_number || a.id,
+          licensee: a.applicant_name || '—',
+          licenseType: a.license_type || '—',
+          originalIssueDate: a.approval_date || a.application_date || new Date().toISOString(),
+          lastRenewalDate: a.approval_date || a.application_date || new Date().toISOString(),
+          currentExpiryDate: a.approval_date ? new Date(new Date(a.approval_date).getTime() + 31536000000).toISOString().slice(0,10) : '-',
+          requestedRenewalDate: null,
+          status: a.status || 'pending',
+          businessName: a.business_name || '—',
+          email: a.applicant_email || '—',
+          phone: a.applicant_phone || '—',
+          address: a.business_address || '—',
+          renewalPeriod: '1 year',
+          renewalFee: 0,
+          paymentStatus: 'pending',
+          documentStatus: 'pending',
+          daysToExpiry: 30,
+          priority: 'medium'
+        }))
+        );
+      }).catch(console.error);
+    });
+  }, []);
 
   const statuses = [
     { value: 'all', label: t.allStatuses },

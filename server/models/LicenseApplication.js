@@ -8,12 +8,35 @@ module.exports = (sequelize, DataTypes) => {
     },
     business_id: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true,
+    },
+    user_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
     },
     license_type: {
       type: DataTypes.STRING,
       allowNull: false,
     }, // generalized license type name
+    license_category: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    license_duration: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    applicant_name: DataTypes.STRING,
+    applicant_email: DataTypes.STRING,
+    applicant_phone: DataTypes.STRING,
+    designation: DataTypes.STRING,
+    business_address: DataTypes.TEXT,
+    pincode: DataTypes.STRING,
+    city: DataTypes.STRING,
+    state: DataTypes.STRING,
+    business_description: DataTypes.TEXT,
+    expected_employees: DataTypes.INTEGER,
+    investment_amount: DataTypes.DECIMAL,
     status: {
       type: DataTypes.ENUM('pending', 'approved', 'rejected'),
       defaultValue: 'pending',
@@ -25,8 +48,20 @@ module.exports = (sequelize, DataTypes) => {
     },
     approval_date: DataTypes.DATE,
     comments: DataTypes.TEXT,
+    priority: {
+      type: DataTypes.ENUM('high', 'medium', 'low'),
+      defaultValue: 'low',
+    },
+    assigned_officer: DataTypes.STRING,
+    department: DataTypes.STRING,
+    processing_time: DataTypes.STRING,
+    fees: DataTypes.STRING,
     document_url: DataTypes.STRING,
     tracking_number: DataTypes.STRING,
+    application_data: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
   });
 
   LicenseApplication.associate = (models) => {
@@ -34,6 +69,12 @@ module.exports = (sequelize, DataTypes) => {
       LicenseApplication.belongsTo(models.Business, {
         foreignKey: 'business_id',
         onDelete: 'CASCADE',
+      });
+    }
+    if (models.User) {
+      LicenseApplication.belongsTo(models.User, {
+        foreignKey: 'user_id',
+        onDelete: 'SET NULL',
       });
     }
   };

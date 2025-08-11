@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { 
   FileCheck, 
@@ -47,6 +47,7 @@ import { Button } from '../ui/button';
 import { Progress } from '../ui/progress';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
+import { BusinessesAPI } from '@/api';
 
 interface DashboardProps {
   user?: any;
@@ -492,14 +493,9 @@ export function Dashboard({ user, onNavigate, language }: DashboardProps) {
   };
 
   // Data for visualizations
-  const applicationTrends = [
-    { month: t.months[0], applications: 12, approvals: 8, percentage: 67 },
-    { month: t.months[1], applications: 18, approvals: 14, percentage: 78 },
-    { month: t.months[2], applications: 15, approvals: 12, percentage: 80 },
-    { month: t.months[3], applications: 22, approvals: 18, percentage: 82 },
-    { month: t.months[4], applications: 28, approvals: 24, percentage: 86 },
-    { month: t.months[5], applications: 32, approvals: 28, percentage: 88 }
-  ];
+  const [applicationTrends, setApplicationTrends] = useState(
+    [0,1,2,3,4,5].map((i) => ({ month: t.months[i], applications: 0, approvals: 0, percentage: 0 }))
+  );
 
   const statusBreakdown = [
     { name: t.approved, value: 68, color: '#22c55e' },
@@ -516,7 +512,7 @@ export function Dashboard({ user, onNavigate, language }: DashboardProps) {
     { stage: t.processingStages[4], avgTime: 1.5, currentTime: 1.2, efficiency: 80 }
   ];
 
-  const summaryData = [
+  const [summaryData, setSummaryData] = useState([
     {
       title: t.activeLicenses,
       value: '12',
@@ -557,7 +553,7 @@ export function Dashboard({ user, onNavigate, language }: DashboardProps) {
       bgColor: 'bg-purple-600/10',
       trend: 'up'
     }
-  ];
+  ]);
 
   const activeLicenses = getActiveLicenses();
   const requiredCertificates = getCertificatesForBusinessType(user?.businessType || 'Technology Startup');
@@ -587,6 +583,31 @@ export function Dashboard({ user, onNavigate, language }: DashboardProps) {
       onNavigate('license-application');
     }
   };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const apps = await BusinessesAPI.getMyLicenseApplications();
+        if (!mounted) return;
+        const pending = (apps || []).filter((a: any) => a.status === 'pending').length;
+        setSummaryData((prev) => prev.map((card) =>
+          card.title === t.pendingApplications ? { ...card, value: String(pending) } : card
+        ));
+
+        const monthly = [0,0,0,0,0,0];
+        (apps || []).forEach((a: any) => {
+          const d = new Date(a.application_date || a.createdAt || Date.now());
+          const idx = d.getMonth() % 6;
+          monthly[idx] += 1;
+        });
+        setApplicationTrends([0,1,2,3,4,5].map((i) => ({ month: t.months[i], applications: monthly[i], approvals: Math.floor(monthly[i]*0.6), percentage: monthly[i] ? Math.floor((monthly[i]*0.6)/monthly[i]*100) : 0 })));
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [t.pendingApplications, t.months]);
 
   const getTrendIcon = (trend: string) => {
     return trend === 'up' ? (
